@@ -1,0 +1,95 @@
+version: 3
+
+vars:
+  # ---For making a new go.mod file---
+  # The full module name for this game. For example "github.com/AzuxirenLeadGuy/mygame"
+  mod_name: 
+  gamename: mygame
+  # ------
+  
+  mod_file: go.mod
+  android_org: ebiten
+  mainprogram: main.go
+  mobilemain: mobile_platform/mobilegame.go
+  build_desktop: bin/{{.gamename}}.exe
+
+tasks:
+  mod-init:
+    cmds:
+      - cmd: go mod init {{.mod_name}}
+      - cmd: |
+          echo 'package main
+          import (
+            "{{.mod_name}}/coregame"
+            v2 "github.com/hajimehoshi/ebiten/v2"
+            "log"
+          )
+          func main() { if err := v2.RunGame(&coregame.Game{Width: 640, Height: 480}); err != nil { log.Fatal(err) } }' > ./{{.mainprogram}}
+      - cmd: mkdir mobile_platform
+      - cmd: |
+          echo 'package coregame
+          import (
+            "{{.mod_name}}/coregame"
+            "github.com/hajimehoshi/ebiten/v2/mobile"
+          )
+          func init() { mobile.SetGame(&coregame.Game{}) }
+          func Dummy() {}' > ./{{.mobilemain}}
+    status:
+      - test -f {{.mod_file}}
+
+  build-base:
+    cmds:
+      - task: mod-init
+      - cmd: mkdir -p ./bin
+      - cmd: mkdir -p ./bin/wasm
+      - cmd: mkdir -p ./bin/android
+      - cmd: go mod tidy
+    sources:
+      - ./coregame/**/*.go
+    generates:
+      - go.sum
+
+  build-desktop:
+    cmds:
+      - task: build-base
+      - cmd: mkdir -p ./bin
+      - cmd: go build -o ./{{.build_desktop}} ./{{.mainprogram}}
+    generates:
+      - ./{{.build_desktop}}
+    sources:
+      - ./coregame/**/*.go
+      - main.go
+  
+  run-desktop:
+    cmd: ./{{.build_desktop}}
+    deps:
+      - task: build-desktop
+  
+  run-wasmserve:
+    cmds:
+      - task: build-wasm
+      - cmd: go run ./wasm_local/wasm_local.go ./bin/wasm
+  
+  build-wasm:
+    cmds:
+      - task: build-base
+      - cmd: mkdir -p ./bin
+      - cmd: mkdir -p ./bin/wasm
+      - cmd: env GOOS=js GOARCH=wasm go build -o ./bin/wasm/game.wasm ./{{.mainprogram}}
+      - cmd: cp $(go env GOROOT)/misc/wasm/wasm_exec.js ./bin/wasm/
+      - cmd: echo '<!DOCTYPE html><html><head><meta charset="utf-8"/><script src="wasm_exec.js"></script><script>const go = new Go();WebAssembly.instantiateStreaming(fetch("game.wasm"), go.importObject).then((result) => {go.run(result.instance);});</script></head><body></body></html>' > ./bin/wasm/index.html
+      - cmd: zip ./bin/wasm-game.zip ./bin/wasm/*
+    generates:
+      - ./bin/wasm-game.zip
+    sources:
+      - ./coregame/**/*.go
+      - main.go
+  build-android-lib:
+    cmds:
+      - task: prepare-folder
+      - cmd: ebitenmobile bind -target android -androidapi=34 -javapkg com.{{.android_org}}.{{.gamename}} -o ./bin/android/mygame.aar ./mobile_platform
+    sources:
+      - ./coregame/**/*.go
+      - ./{{.mobilemain}}
+    generates:
+      - ./bin/android/mygame.aar

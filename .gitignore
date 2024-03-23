@@ -1,0 +1,4 @@
+.vscode/
+bin/
+.task/
+go.sum
