@@ -3,47 +3,27 @@ version: 3
 vars:
   # ---For making a new go.mod file---
   # The full module name for this game. For example "github.com/AzuxirenLeadGuy/mygame"
-  mod_name: 
   gamename: mygame
   # ------
   
-  mod_file: go.mod
   android_org: ebiten
   mainprogram: main.go
   mobilemain: mobile_platform/mobilegame.go
   build_desktop: bin/{{.gamename}}.exe
 
 tasks:
-  mod-init:
-    cmds:
-      - cmd: go mod init {{.mod_name}}
-      - cmd: |
-          echo 'package main
-          import (
-            "{{.mod_name}}/coregame"
-            v2 "github.com/hajimehoshi/ebiten/v2"
-            "log"
-          )
-          func main() { if err := v2.RunGame(&coregame.Game{Width: 640, Height: 480}); err != nil { log.Fatal(err) } }' > ./{{.mainprogram}}
-      - cmd: mkdir mobile_platform
-      - cmd: |
-          echo 'package coregame
-          import (
-            "{{.mod_name}}/coregame"
-            "github.com/hajimehoshi/ebiten/v2/mobile"
-          )
-          func init() { mobile.SetGame(&coregame.Game{}) }
-          func Dummy() {}' > ./{{.mobilemain}}
-    status:
-      - test -f {{.mod_file}}
+
+  tidy-call:
+    cmd: go mod tidy
+    dir: ./coregame
 
   build-base:
     cmds:
-      - task: mod-init
+      - task: tidy-call
+      - cmd: go mod tidy
       - cmd: mkdir -p ./bin
       - cmd: mkdir -p ./bin/wasm
       - cmd: mkdir -p ./bin/android
-      - cmd: go mod tidy
     sources:
       - ./coregame/**/*.go
     generates:
