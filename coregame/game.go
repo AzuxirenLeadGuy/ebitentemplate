@@ -11,20 +11,20 @@ import (
 )
 
 type Game struct {
-	r, g, b byte
+	r, g, b       byte
 	Width, Height int
 }
 
-func reflect_0_255(val int32) byte{
+func reflect_0_255(val int32) byte {
 	if val < 0 {
-		val = - val
+		val = -val
 	} else if val > 255 {
 		val = 510 - val
 	}
 	return byte(val)
 }
 
-func get_part(partid, bit_size,  val int32) int32{
+func get_part(partid, bit_size, val int32) int32 {
 	portion := (val >> (bit_size * partid))
 	portion = portion & ((1 << bit_size) - 1)
 	portion = portion - (1 << (bit_size - 1))
@@ -44,7 +44,7 @@ func (g *Game) Update() error {
 		g.r = reflect_0_255(int32(g.r) + rx)
 		g.g = reflect_0_255(int32(g.g) + gx)
 		g.b = reflect_0_255(int32(g.b) + bx)
-	} else if ip.IsMouseButtonJustReleased(v2.MouseButtonRight){
+	} else if ip.IsMouseButtonJustReleased(v2.MouseButtonRight) {
 		g.r = 128
 		g.g = 128
 		g.b = 128
